@@ -72,7 +72,8 @@
   }
 
   /* ---- Inputs ---- */
-  .apex-input {
+  .apex-input,
+  .input {
     width: 100%;
     background-color: #0D1421;
     border: 1px solid #243044;
@@ -85,16 +86,19 @@
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
-  .apex-input::placeholder {
+  .apex-input::placeholder,
+  .input::placeholder {
     color: #4A5B73;
   }
 
-  .apex-input:focus {
+  .apex-input:focus,
+  .input:focus {
     border-color: #10D98A;
     box-shadow: 0 0 0 3px rgba(16, 217, 138, 0.1);
   }
 
-  .apex-input:hover:not(:focus) {
+  .apex-input:hover:not(:focus),
+  .input:hover:not(:focus) {
     border-color: #2E3D55;
   }
 

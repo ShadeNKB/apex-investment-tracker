@@ -1,7 +1,9 @@
-import { PositionMeta, Transaction } from "../types";
+import { PositionMeta, SyncPayload, Transaction } from "../types";
 
 const TX_KEY = "investment_spending";
 const META_KEY = "apex_position_meta";
+const DELETED_IDS_KEY = "apex_deleted_ids";
+const SYNC_ID_KEY = "apex_sync_id";
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T/;
 
@@ -68,6 +70,11 @@ export function normalizeTransaction(value: unknown, seenIds?: Set<string>): Tra
   const strategy = optionalString(value.strategy);
   const notes = optionalString(value.notes);
 
+  const updatedAt =
+    typeof value.updatedAt === "string" && ISO_RE.test(value.updatedAt)
+      ? value.updatedAt
+      : undefined;
+
   return {
     id: normalizeId(value.id, seenIds),
     month,
@@ -81,6 +88,7 @@ export function normalizeTransaction(value: unknown, seenIds?: Set<string>): Tra
     ...(fees != null ? { fees } : {}),
     ...(strategy ? { strategy } : {}),
     ...(notes ? { notes } : {}),
+    ...(updatedAt ? { updatedAt } : {}),
   };
 }
 
@@ -95,6 +103,11 @@ export function normalizePositionMeta(value: unknown): PositionMeta | null {
   const currentPrice = optionalPositiveNumber(value.currentPrice);
   const priceUpdatedAt = optionalString(value.priceUpdatedAt);
 
+  const updatedAt =
+    typeof value.updatedAt === "string" && ISO_RE.test(value.updatedAt)
+      ? value.updatedAt
+      : undefined;
+
   return {
     ticker,
     ...(displayName ? { displayName } : {}),
@@ -103,6 +116,7 @@ export function normalizePositionMeta(value: unknown): PositionMeta | null {
     ...(value.isArchived === true ? { isArchived: true } : {}),
     ...(currentPrice != null ? { currentPrice } : {}),
     ...(priceUpdatedAt ? { priceUpdatedAt } : {}),
+    ...(updatedAt ? { updatedAt } : {}),
   };
 }
 
@@ -143,9 +157,65 @@ export const savePositionMeta = (data: PositionMeta[]): void => {
   }
 };
 
-export const clearPortfolioStorage = (): void => {
+export const clearPortfolioStorage = ({ keepDeletedIds = false }: { keepDeletedIds?: boolean } = {}): void => {
   localStorage.removeItem(TX_KEY);
   localStorage.removeItem(META_KEY);
+  if (!keepDeletedIds) localStorage.removeItem(DELETED_IDS_KEY);
+};
+
+// ---------------------------------------------------------------------------
+// Sync ID persistence
+// ---------------------------------------------------------------------------
+
+export const getSyncId = (): string | null => {
+  try {
+    return localStorage.getItem(SYNC_ID_KEY);
+  } catch {
+    return null;
+  }
+};
+
+export const saveSyncId = (id: string | null): void => {
+  try {
+    if (id) localStorage.setItem(SYNC_ID_KEY, id);
+    else localStorage.removeItem(SYNC_ID_KEY);
+  } catch {
+    // Swallow — sync ID loss is non-fatal
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Tombstone set for deleted transaction IDs
+// ---------------------------------------------------------------------------
+
+const TOMBSTONE_CAP = 2000;
+
+export const loadDeletedIds = (): string[] => {
+  try {
+    const raw = localStorage.getItem(DELETED_IDS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === "string")
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveDeletedIds = (ids: string[]): void => {
+  try {
+    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(ids));
+  } catch {
+    // Swallow — tombstone loss is non-fatal (deleted items may briefly reappear on remote sync)
+  }
+};
+
+export const addDeletedId = (id: string): void => {
+  const existing = loadDeletedIds();
+  if (existing.includes(id)) return;
+  const updated = [...existing, id].slice(-TOMBSTONE_CAP);
+  saveDeletedIds(updated);
 };
 
 export const loadPositionMeta = (): PositionMeta[] => {
@@ -165,11 +235,12 @@ export const upsertPositionMeta = (meta: PositionMeta): void => {
 };
 
 export const downloadBackup = (transactions: Transaction[]): void => {
-  const payload = {
-    version: 2,
+  const payload: SyncPayload = {
+    version: 3,
     exportedAt: new Date().toISOString(),
     transactions,
     positionMeta: loadPositionMeta(),
+    deletedIds: loadDeletedIds(),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: "application/json",
@@ -184,7 +255,7 @@ export const downloadBackup = (transactions: Transaction[]): void => {
 
 export const restoreFromFile = (
   file: File
-): Promise<{ transactions: Transaction[]; meta: PositionMeta[] }> => {
+): Promise<{ transactions: Transaction[]; meta: PositionMeta[]; deletedIds: string[] }> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -208,11 +279,15 @@ export const restoreFromFile = (
           const normalizedMeta = Array.isArray(meta)
             ? meta.map(normalizePositionMeta).filter((row): row is PositionMeta => row != null)
             : [];
-          return { transactions: normalizedTransactions, meta: normalizedMeta };
+          return { transactions: normalizedTransactions, meta: normalizedMeta, deletedIds: [] };
         };
 
-        if (isRecord(parsed) && parsed.version === 2) {
-          resolve(normalizePayload(parsed.transactions, parsed.positionMeta));
+        if (isRecord(parsed) && (parsed.version === 2 || parsed.version === 3)) {
+          const restored = normalizePayload(parsed.transactions, parsed.positionMeta);
+          const deletedIds = parsed.version === 3 && Array.isArray(parsed.deletedIds)
+            ? parsed.deletedIds.filter((id): id is string => typeof id === "string")
+            : [];
+          resolve({ ...restored, deletedIds });
         } else if (Array.isArray(parsed)) {
           resolve(normalizePayload(parsed, []));
         } else {

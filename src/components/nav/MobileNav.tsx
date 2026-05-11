@@ -9,8 +9,10 @@ import {
   Upload,
   Trash2,
   X,
+  Cloud,
+  CloudOff,
 } from "lucide-react";
-import { ViewId } from "../../types";
+import { ViewId, CloudStatus } from "../../types";
 
 interface MobileNavProps {
   activeView: ViewId;
@@ -19,6 +21,9 @@ interface MobileNavProps {
   onRestore: (file: File) => void;
   onClear: () => void;
   hasData: boolean;
+  cloudStatus: CloudStatus;
+  syncEnabled: boolean;
+  onOpenSync: () => void;
 }
 
 const ITEMS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
@@ -28,7 +33,7 @@ const ITEMS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
   { id: "analytics", label: "Analytics", icon: <BarChart3 size={18} /> },
 ];
 
-export function MobileNav({ activeView, onNavigate, onBackup, onRestore, onClear, hasData }: MobileNavProps) {
+export function MobileNav({ activeView, onNavigate, onBackup, onRestore, onClear, hasData, cloudStatus, syncEnabled, onOpenSync }: MobileNavProps) {
   const [showActions, setShowActions] = useState(false);
 
   const handleRestore = () => {
@@ -57,6 +62,23 @@ export function MobileNav({ activeView, onNavigate, onBackup, onRestore, onClear
                 <X size={14} />
               </button>
             </div>
+            <button
+              onClick={() => { onOpenSync(); setShowActions(false); }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-ink-secondary hover:bg-[#131D2E]"
+            >
+              {syncEnabled ? (
+                <Cloud size={15} className={
+                  cloudStatus === "synced" ? "text-profit" :
+                  cloudStatus === "error" ? "text-loss" : ""
+                } />
+              ) : (
+                <CloudOff size={15} />
+              )}
+              <span>Sync</span>
+              {cloudStatus === "synced" && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-profit" />}
+              {cloudStatus === "error" && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-loss" />}
+              {cloudStatus === "syncing" && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />}
+            </button>
             <button
               onClick={() => { onBackup(); setShowActions(false); }}
               disabled={!hasData}

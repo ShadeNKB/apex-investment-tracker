@@ -15,6 +15,7 @@ export interface Transaction {
   strategy?: string;       // tag: "Core", "Growth", "Speculation", etc.
   notes?: string;          // free-form journal note
   timestamp: string;       // ISO string — creation time
+  updatedAt?: string;      // ISO string — last edit time, used for LWW sync merge
 }
 
 // Legacy alias — keep for backwards compatibility
@@ -30,6 +31,7 @@ export interface PositionMeta {
   strategy?: string;           // position-level strategy override
   notes?: string;
   isArchived?: boolean;        // hide from active portfolio
+  updatedAt?: string;          // ISO string — last edit time, used for LWW sync merge
   // Legacy — older backups may carry these; ignored by current UI
   currentPrice?: number;
   priceUpdatedAt?: string;
@@ -90,6 +92,18 @@ export interface CumulativeDataPoint {
   month: string;
   total: number;
   [ticker: string]: number | string;
+}
+
+// Sync types
+
+export type CloudStatus = "idle" | "syncing" | "synced" | "error";
+
+export interface SyncPayload {
+  version: 3;
+  exportedAt: string;
+  transactions: Transaction[];
+  positionMeta: PositionMeta[];
+  deletedIds: string[];
 }
 
 // UI types

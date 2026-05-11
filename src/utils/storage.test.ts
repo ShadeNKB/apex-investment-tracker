@@ -4,6 +4,8 @@ import {
   loadPositionMeta,
   restoreFromFile,
   saveTransactions,
+  loadDeletedIds,
+  saveDeletedIds,
 } from "./storage";
 import { Transaction } from "../types";
 
@@ -88,6 +90,28 @@ describe("storage hardening", () => {
     expect(result.transactions).toHaveLength(2);
     expect(new Set(result.transactions.map((tx) => tx.id)).size).toBe(2);
     expect(result.meta).toEqual([{ ticker: "VOO", displayName: "S&P 500" }]);
+  });
+
+  it("restores v3 backups with sync tombstones", async () => {
+    const result = await restoreFromFile(
+      fileFromJson({
+        version: 3,
+        exportedAt: "2026-05-01T00:00:00.000Z",
+        transactions: [
+          { id: "tx-1", month: "2026-05", ticker: "VOO", amount: 100, timestamp: "2026-05-01T00:00:00.000Z" },
+        ],
+        positionMeta: [],
+        deletedIds: ["deleted-tx", 123],
+      })
+    );
+
+    expect(result.deletedIds).toEqual(["deleted-tx"]);
+  });
+
+  it("persists deleted ids defensively", () => {
+    saveDeletedIds(["a", "b"]);
+
+    expect(loadDeletedIds()).toEqual(["a", "b"]);
   });
 
   it("surfaces localStorage write failures to callers", () => {

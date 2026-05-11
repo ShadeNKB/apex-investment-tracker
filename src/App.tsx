@@ -1,7 +1,9 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Sidebar } from "./components/nav/Sidebar";
 import { MobileNav } from "./components/nav/MobileNav";
 import { usePortfolio } from "./hooks/usePortfolio";
+import { useSyncState } from "./hooks/useSyncState";
+import { SyncPanel } from "./components/SyncPanel";
 import { ViewId } from "./types";
 
 const Dashboard = lazy(() => import("./views/Dashboard").then((m) => ({ default: m.Dashboard })));
@@ -40,6 +42,8 @@ function LoadingScreen({ compact = false }: { compact?: boolean }) {
 function App() {
   const [view, setView] = useState<ViewId>("dashboard");
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [showSyncPanel, setShowSyncPanel] = useState(false);
+  const scheduleSyncPushRef = useRef<() => void>(() => {});
   const requestAdd = useCallback(() => setShowAddTransaction(true), []);
 
   useEffect(() => {
@@ -82,7 +86,18 @@ function App() {
     clearAll,
     backup,
     restore,
-  } = usePortfolio();
+    exportBackup,
+    applySync,
+  } = usePortfolio({ onMutation: () => scheduleSyncPushRef.current() });
+
+  const sync = useSyncState({ exportBackup, applySync });
+
+  useEffect(() => {
+    scheduleSyncPushRef.current = sync.schedulePush;
+  }, [sync.schedulePush]);
+
+  // Restore persisted sync ID on mount.
+  useEffect(() => { sync.initSync(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return <LoadingScreen />;
@@ -98,6 +113,9 @@ function App() {
         onRestore={restore}
         onClear={clearAll}
         hasData={transactions.length > 0}
+        cloudStatus={sync.cloudStatus}
+        syncEnabled={sync.syncEnabled}
+        onOpenSync={() => setShowSyncPanel(true)}
       />
 
       {/* Main content */}
@@ -171,6 +189,9 @@ function App() {
         onRestore={restore}
         onClear={clearAll}
         hasData={transactions.length > 0}
+        cloudStatus={sync.cloudStatus}
+        syncEnabled={sync.syncEnabled}
+        onOpenSync={() => setShowSyncPanel(true)}
       />
 
       {showAddTransaction && (
@@ -180,6 +201,19 @@ function App() {
             onClose={() => setShowAddTransaction(false)}
           />
         </Suspense>
+      )}
+
+      {showSyncPanel && (
+        <SyncPanel
+          syncEnabled={sync.syncEnabled}
+          syncId={sync.syncId}
+          cloudStatus={sync.cloudStatus}
+          lastSyncAt={sync.lastSyncAt}
+          onSetupSync={sync.setupSync}
+          onDisconnectSync={sync.disconnectSync}
+          onTriggerSync={sync.triggerSync}
+          onClose={() => setShowSyncPanel(false)}
+        />
       )}
     </div>
   );

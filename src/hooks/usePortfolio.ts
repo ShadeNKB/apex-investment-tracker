@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Transaction, PositionMeta, PositionSummary, PortfolioMetrics } from "../types";
+import { Transaction, PositionMeta, PositionSummary, PortfolioMetrics, SyncPayload } from "../types";
 import {
   loadTransactions,
   saveTransactions,
@@ -10,6 +10,9 @@ import {
   restoreFromFile,
   createTransactionId,
   clearPortfolioStorage,
+  loadDeletedIds,
+  saveDeletedIds,
+  addDeletedId,
 } from "../utils/storage";
 import {
   buildPositionSummaries,
@@ -19,7 +22,11 @@ import {
 } from "../utils/metrics";
 import { useNotification } from "./useNotification";
 
-export function usePortfolio() {
+interface UsePortfolioOptions {
+  onMutation?: () => void;
+}
+
+export function usePortfolio({ onMutation }: UsePortfolioOptions = {}) {
   const [transactions, setTransactions] = useState<Transaction[]>(() => loadTransactions());
   const [positionMeta, setPositionMeta] = useState<PositionMeta[]>(() => loadPositionMeta());
   const [loading] = useState(false);
@@ -39,41 +46,46 @@ export function usePortfolio() {
         saveTransactions(updated);
         setTransactions(updated);
         showNotification("Transaction recorded", "success");
+        onMutation?.();
       } catch {
         showNotification("Could not save transaction. Export a backup before refreshing.", "error");
       }
     },
-    [transactions, showNotification]
+    [transactions, showNotification, onMutation]
   );
 
   const updateTransaction = useCallback(
     (id: string, data: Omit<Transaction, "id" | "timestamp">) => {
+      const now = new Date().toISOString();
       const updated = transactions.map((t) =>
-        t.id === id ? { ...t, ...data, ticker: data.ticker.toUpperCase() } : t
+        t.id === id ? { ...t, ...data, ticker: data.ticker.toUpperCase(), updatedAt: now } : t
       );
       try {
         saveTransactions(updated);
         setTransactions(updated);
         showNotification("Transaction updated", "success");
+        onMutation?.();
       } catch {
         showNotification("Could not save transaction update.", "error");
       }
     },
-    [transactions, showNotification]
+    [transactions, showNotification, onMutation]
   );
 
   const deleteTransaction = useCallback(
     (id: string) => {
       const updated = transactions.filter((t) => t.id !== id);
       try {
+        addDeletedId(id);
         saveTransactions(updated);
         setTransactions(updated);
         showNotification("Transaction deleted", "success");
+        onMutation?.();
       } catch {
         showNotification("Could not delete transaction.", "error");
       }
     },
-    [transactions, showNotification]
+    [transactions, showNotification, onMutation]
   );
 
   // Position metadata
@@ -81,29 +93,52 @@ export function usePortfolio() {
   const updatePositionMeta = useCallback(
     (meta: PositionMeta) => {
       try {
-        upsertPositionMeta(meta);
+        const metaWithTimestamp: PositionMeta = { ...meta, updatedAt: new Date().toISOString() };
+        upsertPositionMeta(metaWithTimestamp);
         setPositionMeta(loadPositionMeta());
         showNotification(`${meta.ticker} updated`, "success");
+        onMutation?.();
       } catch {
         showNotification("Could not save position details.", "error");
       }
     },
-    [showNotification]
+    [showNotification, onMutation]
   );
 
   // Portfolio-level actions
 
   const clearAll = useCallback(() => {
     if (!window.confirm("Clear ALL data? This cannot be undone.")) return;
-    setTransactions([]);
-    setPositionMeta([]);
     try {
-      clearPortfolioStorage();
+      const deletedIds = [...new Set([...loadDeletedIds(), ...transactions.map((tx) => tx.id)])].slice(-2000);
+      saveDeletedIds(deletedIds);
+      clearPortfolioStorage({ keepDeletedIds: true });
+      setTransactions([]);
+      setPositionMeta([]);
       showNotification("All data cleared", "success");
+      onMutation?.();
     } catch {
       showNotification("Could not clear all local data.", "error");
     }
-  }, [showNotification]);
+  }, [transactions, showNotification, onMutation]);
+
+  // Sync integration
+
+  const exportBackup = useCallback((): SyncPayload => ({
+    version: 3,
+    exportedAt: new Date().toISOString(),
+    transactions,
+    positionMeta,
+    deletedIds: loadDeletedIds(),
+  }), [transactions, positionMeta]);
+
+  const applySync = useCallback((payload: SyncPayload) => {
+    setTransactions(payload.transactions);
+    setPositionMeta(payload.positionMeta);
+    saveTransactions(payload.transactions);
+    savePositionMeta(payload.positionMeta);
+    saveDeletedIds(payload.deletedIds);
+  }, []);
 
   const backup = useCallback(() => {
     downloadBackup(transactions);
@@ -113,17 +148,19 @@ export function usePortfolio() {
   const restore = useCallback(
     async (file: File) => {
       try {
-        const { transactions: txs, meta } = await restoreFromFile(file);
+        const { transactions: txs, meta, deletedIds } = await restoreFromFile(file);
         setTransactions(txs);
         setPositionMeta(meta);
         saveTransactions(txs);
         savePositionMeta(meta);
+        saveDeletedIds(deletedIds);
         showNotification(`Restored ${txs.length} transactions`, "success");
+        onMutation?.();
       } catch (err) {
         showNotification(err instanceof Error ? err.message : "Invalid backup file", "error");
       }
     },
-    [showNotification]
+    [showNotification, onMutation]
   );
 
   useEffect(() => {
@@ -185,5 +222,7 @@ export function usePortfolio() {
     clearAll,
     backup,
     restore,
+    exportBackup,
+    applySync,
   };
 }

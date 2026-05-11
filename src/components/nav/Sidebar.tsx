@@ -7,8 +7,10 @@ import {
   Upload,
   Trash2,
   TrendingUp,
+  Cloud,
+  CloudOff,
 } from "lucide-react";
-import { ViewId } from "../../types";
+import { ViewId, CloudStatus } from "../../types";
 
 interface SidebarProps {
   activeView: ViewId;
@@ -17,6 +19,9 @@ interface SidebarProps {
   onRestore: (file: File) => void;
   onClear: () => void;
   hasData: boolean;
+  cloudStatus: CloudStatus;
+  syncEnabled: boolean;
+  onOpenSync: () => void;
 }
 
 const NAV_ITEMS: { id: ViewId; label: string; icon: React.ReactNode }[] = [
@@ -33,6 +38,9 @@ export function Sidebar({
   onRestore,
   onClear,
   hasData,
+  cloudStatus,
+  syncEnabled,
+  onOpenSync,
 }: SidebarProps) {
   const handleRestore = () => {
     const input = document.createElement("input");
@@ -88,6 +96,24 @@ export function Sidebar({
 
       {/* Data actions */}
       <div className="px-3 py-4 border-t border-[#1A2435] space-y-0.5">
+        {/* Sync entry */}
+        <button
+          onClick={onOpenSync}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-ink-muted hover:text-ink-secondary hover:bg-[#0D1421] transition-colors duration-150 cursor-pointer"
+        >
+          <SyncStatusIcon cloudStatus={cloudStatus} syncEnabled={syncEnabled} />
+          <span>Sync</span>
+          {cloudStatus === "synced" && (
+            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-profit" />
+          )}
+          {cloudStatus === "error" && (
+            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-loss" />
+          )}
+          {cloudStatus === "syncing" && (
+            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-profit animate-pulse" />
+          )}
+        </button>
+
         <button
           onClick={onBackup}
           disabled={!hasData}
@@ -115,4 +141,10 @@ export function Sidebar({
       </div>
     </aside>
   );
+}
+
+function SyncStatusIcon({ cloudStatus, syncEnabled }: { cloudStatus: CloudStatus; syncEnabled: boolean }) {
+  if (!syncEnabled) return <CloudOff size={13} />;
+  if (cloudStatus === "idle") return <Cloud size={13} />;
+  return <Cloud size={13} className={cloudStatus === "error" ? "text-loss" : cloudStatus === "synced" ? "text-profit" : ""} />;
 }

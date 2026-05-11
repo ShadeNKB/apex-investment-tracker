@@ -5,7 +5,7 @@
 <h1 align="center">Apex</h1>
 
 <p align="center">
-  <strong>Your portfolio, at a glance — no backend required.</strong><br/>
+  <strong>Your portfolio, at a glance - local-first, with optional Supabase sync.</strong><br/>
   A fast, local-first investment tracker with allocation breakdowns, contribution trends, and strategy-tagged positions.
 </p>
 
@@ -27,6 +27,8 @@
   &nbsp;·&nbsp;
   <a href="#quick-start">Quick start</a>
   &nbsp;·&nbsp;
+  <a href="docs/CROSS_DEVICE_SYNC.md">Cross-device sync</a>
+  &nbsp;·&nbsp;
   <a href="#architecture">Architecture</a>
 </p>
 
@@ -36,7 +38,7 @@
 
 Most investment dashboards require an account, an API key, or a subscription before you can see anything useful. Apex skips all of that.
 
-- **Offline-first.** Every transaction is saved to `localStorage` — your data never leaves the browser.
+- **Offline-first.** Every transaction is saved to `localStorage`; sync is optional and never sits in the hot path.
 - **Instant clarity.** Log a buy or sell, and every view — allocation donut, cumulative chart, cost basis — updates in real time.
 - **Strategy-aware.** Tag positions with custom strategy labels (DCA, Growth, Hedge…) and filter your entire history by them.
 - **Keyboard-driven.** `N` to add a transaction, `G` + `D/P/T/A` to navigate — never take your hands off the keyboard.
@@ -53,6 +55,7 @@ Most investment dashboards require an account, an API key, or a subscription bef
 | **Transactions** | Full history with search, filters (month / asset / type), inline two-step delete confirmation, and edit-in-place |
 | **Analytics** | Stacked area/bar trends, category and strategy breakdowns, year-over-year comparison, monthly breakdown table |
 | **Backup & restore** | One-click JSON export and import with deep schema validation — invalid files are rejected, never silently corrupt state |
+| **Optional sync** | UUID-scoped Supabase relay for cross-device persistence without accounts |
 | **PWA** | Installable on iOS & Android, works offline after first load, respects iOS safe areas |
 | **Accessible** | `aria-live` announcements, focus traps, keyboard navigation throughout |
 
@@ -81,7 +84,7 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-No environment variables required. Fully client-side.
+No environment variables are required for local-only use. Add the optional Supabase variables below when you want cross-device sync.
 
 ### Scripts
 
@@ -121,8 +124,29 @@ All state is owned by a single `usePortfolio` hook. Views are lazy-loaded chunks
 |-----|----------|
 | `investment_spending` | Transaction array |
 | `apex_position_meta` | Per-ticker display name, strategy, archive flag |
+| `apex_deleted_ids` | Transaction tombstones used by sync deletion propagation |
+| `apex_sync_id` | Optional UUID sync bucket ID |
 
 Backups export both stores as a versioned JSON file. Imports validate schema before replacing local data.
+
+### Optional sync
+
+Apex sync is local-first. The browser remains the source of truth, while Supabase stores one JSON payload per sync UUID so another device can pull, merge, and push the same bucket through exact-key RPC functions.
+
+To enable sync:
+
+1. Create a Supabase project.
+2. Run `supabase/migrations/001_sync.sql` in the Supabase SQL editor.
+3. Add these env vars locally or in Vercel:
+
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+Security model: the sync UUID is a bearer secret. Anyone with the code can read and update that sync bucket, so treat it like a password and avoid sharing it in chats or screenshots. The migration keeps the table private to anon clients and exposes only `pull_sync_bucket` / `push_sync_bucket` RPC calls.
+
+Full setup guide: [docs/CROSS_DEVICE_SYNC.md](docs/CROSS_DEVICE_SYNC.md).
 
 ### Performance
 
@@ -149,7 +173,10 @@ Push to GitHub, then import the repo on [vercel.com](https://vercel.com). Vercel
 - `index.html` / `manifest.json` → `no-cache` (always fresh)
 - Security headers on all routes (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`)
 
-No environment variables required.
+No environment variables are required for local-only deployments. For sync-enabled deployments, set:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
 ### Any static host
 
@@ -183,7 +210,7 @@ npm run build   → clean (tsc + vite, 0 warnings)
 <details>
 <summary><b>Do I need an account or API key?</b></summary>
 <br/>
-No. Apex has no backend. All data is stored in your browser's <code>localStorage</code>. Nothing leaves your device.
+No account is required. Apex stores data in your browser's <code>localStorage</code>. If you enable optional Supabase sync, encrypted transport is used to relay your UUID-scoped payload between your own devices.
 </details>
 
 <details>
