@@ -1,0 +1,17 @@
+{
+  "name": "Apex — Investment Tracker",
+  "short_name": "Apex",
+  "description": "Track investments, monitor allocation, and visualise portfolio growth.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060B14",
+  "theme_color": "#060B14",
+  "icons": [
+    {
+      "src": "/chart.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
