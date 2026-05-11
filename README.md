@@ -37,7 +37,7 @@ A local-first investment tracker built for clarity. Log buys and sells, track al
 ## Getting started
 
 ```bash
-git clone https://github.com/ShadeNKB/apex-investment-tracker
+git clone https://github.com/ShadeNKB/apex-investment-tracker.git
 cd apex-investment-tracker
 npm install
 npm run dev          # http://localhost:3000
