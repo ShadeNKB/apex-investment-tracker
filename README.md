@@ -2,7 +2,7 @@
 
 A local-first investment tracker built for clarity. Log buys and sells, track allocation across assets, visualise monthly contribution trends, and export clean JSON backups — all without a backend or an account.
 
-**Live demo:** _add Vercel URL after deployment_
+**Live demo:** [apex-investment-tracker.vercel.app](https://apex-investment-tracker.vercel.app)
 
 ---
 
