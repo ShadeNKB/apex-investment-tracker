@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SyncPayload, Transaction } from "../types";
-import { mergeSyncPayloads, normalizeSyncPayload, syncPayloadsEqual } from "./syncService";
+import { mergeSyncPayloads, normalizeSupabaseUrl, normalizeSyncPayload, syncPayloadsEqual } from "./syncService";
 
 const tx = (overrides: Partial<Transaction>): Transaction => ({
   id: "tx-1",
@@ -22,6 +22,12 @@ const payload = (overrides: Partial<SyncPayload> = {}): SyncPayload => ({
 });
 
 describe("sync service", () => {
+  it("normalizes Supabase project URLs pasted from Data API settings", () => {
+    expect(normalizeSupabaseUrl("https://example.supabase.co/rest/v1")).toBe("https://example.supabase.co");
+    expect(normalizeSupabaseUrl("https://example.supabase.co/rest/v1/")).toBe("https://example.supabase.co");
+    expect(normalizeSupabaseUrl(" https://example.supabase.co/ ")).toBe("https://example.supabase.co");
+  });
+
   it("rejects non-v3 or structurally invalid remote payloads", () => {
     expect(normalizeSyncPayload(null)).toBeNull();
     expect(normalizeSyncPayload({ version: 2, transactions: [], positionMeta: [] })).toBeNull();

@@ -9,8 +9,9 @@ import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import type { SyncPayload, Transaction, PositionMeta } from "../types";
 import { normalizeTransaction, normalizePositionMeta } from "../utils/storage";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const RAW_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const SUPABASE_URL = normalizeSupabaseUrl(RAW_SUPABASE_URL);
 
 export const syncEnabled = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 
@@ -52,12 +53,56 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
+export function normalizeSupabaseUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return value.trim().replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/, "");
+}
+
 function payloadSignature(payload: SyncPayload): string {
   return JSON.stringify({
     transactions: payload.transactions,
     positionMeta: payload.positionMeta,
     deletedIds: payload.deletedIds,
   });
+}
+
+function sendSyncBroadcast(client: SupabaseClient, syncId: string, exportedAt: string): void {
+  try {
+    const channel = client.channel(`apex-sync:${syncId}`);
+    let cleanedUp = false;
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      void client.removeChannel(channel);
+    };
+    const timeout = setTimeout(cleanup, 3_000);
+
+    channel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        void channel
+          .send({
+            type: "broadcast",
+            event: "sync",
+            payload: { updatedAt: exportedAt },
+          })
+          .catch((error: unknown) => {
+            if (import.meta.env.DEV) console.warn("[sync] broadcast failed", error);
+          })
+          .finally(() => {
+            clearTimeout(timeout);
+            cleanup();
+          });
+        return;
+      }
+
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        clearTimeout(timeout);
+        cleanup();
+      }
+    });
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn("[sync] broadcast setup failed", error);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -190,11 +235,7 @@ export async function pushSync(syncId: string, data: SyncPayload): Promise<void>
     .rpc("push_sync_bucket", { bucket_id: syncId, bucket_payload: data });
   if (error) throw error;
 
-  await client.channel(`apex-sync:${syncId}`).send({
-    type: "broadcast",
-    event: "sync",
-    payload: { updatedAt: data.exportedAt },
-  });
+  sendSyncBroadcast(client, syncId, data.exportedAt);
 }
 
 export async function pullSync(syncId: string): Promise<SyncPayload | null> {
