@@ -10,10 +10,12 @@ import type { SyncPayload, Transaction, PositionMeta } from "../types";
 import { normalizeTransaction, normalizePositionMeta } from "../utils/storage";
 
 const RAW_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const RAW_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 const SUPABASE_URL = normalizeSupabaseUrl(RAW_SUPABASE_URL);
+const SUPABASE_ANON_KEY = normalizeSupabaseAnonKey(RAW_SUPABASE_ANON_KEY);
 
-export const syncEnabled = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+export const syncConfigError = getSyncConfigError(RAW_SUPABASE_URL, RAW_SUPABASE_ANON_KEY);
+export const syncEnabled = !!(SUPABASE_URL && SUPABASE_ANON_KEY && !syncConfigError);
 
 const PAYLOAD_WARN_BYTES = 800 * 1024;
 const TOMBSTONE_CAP = 2000;
@@ -56,6 +58,21 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 export function normalizeSupabaseUrl(value: string | undefined): string | undefined {
   if (!value) return undefined;
   return value.trim().replace(/\/rest\/v1\/?$/i, "").replace(/\/+$/, "");
+}
+
+export function normalizeSupabaseAnonKey(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return value.trim();
+}
+
+export function getSyncConfigError(url: string | undefined, anonKey: string | undefined): string | null {
+  const normalizedUrl = normalizeSupabaseUrl(url);
+  const normalizedAnonKey = normalizeSupabaseAnonKey(anonKey);
+  if (!normalizedUrl || !normalizedAnonKey) return null;
+  if (/^https?:\/\//i.test(normalizedAnonKey)) {
+    return "VITE_SUPABASE_ANON_KEY is set to a URL. Paste the anon/public API key instead.";
+  }
+  return null;
 }
 
 function payloadSignature(payload: SyncPayload): string {

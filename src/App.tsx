@@ -208,6 +208,7 @@ function App() {
           syncEnabled={sync.syncEnabled}
           syncId={sync.syncId}
           cloudStatus={sync.cloudStatus}
+          syncError={sync.syncError ?? sync.syncConfigError}
           lastSyncAt={sync.lastSyncAt}
           onSetupSync={sync.setupSync}
           onDisconnectSync={sync.disconnectSync}

@@ -13,6 +13,7 @@ import {
   subscribeSync,
   mergeSyncPayloads,
   syncPayloadsEqual,
+  syncConfigError,
 } from "../services/syncService";
 import { getSyncId, saveSyncId } from "../utils/storage";
 
@@ -25,10 +26,20 @@ const PUSH_DEBOUNCE_MS = 3000;
 const MAX_RETRY_DELAY_MS = 2 * 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+function getSyncErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return "Could not reach sync server. Changes are saved locally and will retry.";
+}
+
 export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
   const [syncId, setSyncId] = useState<string | null>(null);
   const [cloudStatus, setCloudStatus] = useState<CloudStatus>("idle");
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(syncConfigError);
 
   // Mutable refs — always-current values accessible inside async closures
   // without stale-closure problems. Equivalent to Zustand's get().
@@ -65,10 +76,13 @@ export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
     if (inFlightRef.current) return inFlightRef.current;
 
     setCloudStatus("syncing");
+    setSyncError(null);
     inFlightRef.current = (async () => {
       try {
-        const local = exportBackupRef.current();
         const remote = await pullSync(id);
+        // Snapshot after the network read, not before it. Otherwise a local
+        // edit made during the pull can be overwritten by the older snapshot.
+        const local = exportBackupRef.current();
         const merged = remote ? mergeSyncPayloads(local, remote) : local;
 
         // Apply merged data locally. The syncApplying flag prevents the
@@ -90,6 +104,7 @@ export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
         console.error("[sync] triggerSync failed", err);
         syncApplying.value = false;
         setCloudStatus("error");
+        setSyncError(getSyncErrorMessage(err));
         // Exponential backoff: 3s, 6s, 12s … capped at 2 min.
         if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
         retryAttemptRef.current = Math.min(retryAttemptRef.current + 1, 8);
@@ -119,12 +134,14 @@ export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
       saveSyncId(null);
       setSyncId(null);
       setCloudStatus("idle");
+      setSyncError(null);
       return;
     }
 
     saveSyncId(id);
     const gen = ++setupGenRef.current;
     setSyncId(id);
+    setSyncError(null);
 
     // Tear down any previous Realtime subscription.
     if (realtimeUnsubRef.current) {
@@ -162,6 +179,7 @@ export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
     saveSyncId(null);
     setSyncId(null);
     setCloudStatus("idle");
+    setSyncError(null);
     setLastSyncAt(null);
     clearTimers();
     retryAttemptRef.current = 0;
@@ -208,8 +226,10 @@ export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
   return {
     syncId,
     cloudStatus,
+    syncError,
     lastSyncAt,
     syncEnabled,
+    syncConfigError,
     initSync,
     setupSync,
     disconnectSync,

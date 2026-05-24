@@ -21,6 +21,7 @@ interface SyncPanelProps {
   syncEnabled: boolean;
   syncId: string | null;
   cloudStatus: CloudStatus;
+  syncError?: string | null;
   lastSyncAt: number | null;
   onSetupSync: (id: string) => Promise<void>;
   onDisconnectSync: () => void;
@@ -44,6 +45,7 @@ export function SyncPanel({
   syncEnabled,
   syncId,
   cloudStatus,
+  syncError,
   lastSyncAt,
   onSetupSync,
   onDisconnectSync,
@@ -54,7 +56,7 @@ export function SyncPanel({
     <Modal title="Sync across devices" onClose={onClose} width="max-w-md">
       <div className="pb-[env(safe-area-inset-bottom)]">
           {!syncEnabled ? (
-            <NotConfigured />
+            <NotConfigured syncError={syncError} />
           ) : !syncId ? (
             <SetupView
               onSetupSync={onSetupSync}
@@ -64,6 +66,7 @@ export function SyncPanel({
             <ConnectedView
               syncId={syncId}
               cloudStatus={cloudStatus}
+              syncError={syncError}
               lastSyncAt={lastSyncAt}
               onTriggerSync={onTriggerSync}
               onDisconnectSync={onDisconnectSync}
@@ -74,7 +77,7 @@ export function SyncPanel({
   );
 }
 
-function NotConfigured() {
+function NotConfigured({ syncError }: { syncError?: string | null }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-xl border border-[#243044] bg-[#131D2E] p-4 flex flex-col gap-3">
@@ -85,6 +88,11 @@ function NotConfigured() {
         <p className="text-[12px] text-ink-muted leading-relaxed">
           Cross-device sync uses Supabase as a private relay. Your data stays local-first; Supabase is only used to move changes between your devices.
         </p>
+        {syncError && (
+          <div className="rounded-lg border border-loss/20 bg-loss/10 px-3 py-2 text-[11px] text-loss leading-relaxed">
+            {syncError}
+          </div>
+        )}
         <ol className="flex flex-col gap-2 mt-1">
           {[
             <>Create a free project at <span className="font-mono text-ink-secondary">supabase.com</span></>,
@@ -237,12 +245,14 @@ function SetupView({
 function ConnectedView({
   syncId,
   cloudStatus,
+  syncError,
   lastSyncAt,
   onTriggerSync,
   onDisconnectSync,
 }: {
   syncId: string;
   cloudStatus: CloudStatus;
+  syncError?: string | null;
   lastSyncAt: number | null;
   onTriggerSync: () => Promise<void>;
   onDisconnectSync: () => void;
@@ -311,7 +321,7 @@ function ConnectedView({
         {cloudStatus === "error" && (
           <div className="flex items-center gap-2 rounded-lg bg-loss/10 border border-loss/20 px-3 py-2 text-[11px] text-loss">
             <AlertCircle size={12} className="shrink-0" />
-            Could not reach sync server. Changes saved locally and will push when connection is restored.
+            {syncError ?? "Could not reach sync server. Changes saved locally and will push when connection is restored."}
           </div>
         )}
 
@@ -331,7 +341,7 @@ function ConnectedView({
             className="text-left flex items-center gap-2 rounded-lg border border-[#243044] bg-[#0D1421] px-3 py-2 hover:border-profit/30 transition"
             title="Tap to copy"
           >
-            <span className="flex-1 font-mono text-[11px] text-ink-secondary truncate select-all">
+            <span className="flex-1 font-mono text-[11px] text-ink-secondary break-all select-all">
               {syncId}
             </span>
           </button>

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { SyncPayload, Transaction } from "../types";
-import { mergeSyncPayloads, normalizeSupabaseUrl, normalizeSyncPayload, syncPayloadsEqual } from "./syncService";
+import {
+  getSyncConfigError,
+  mergeSyncPayloads,
+  normalizeSupabaseAnonKey,
+  normalizeSupabaseUrl,
+  normalizeSyncPayload,
+  syncPayloadsEqual,
+} from "./syncService";
 
 const tx = (overrides: Partial<Transaction>): Transaction => ({
   id: "tx-1",
@@ -26,6 +33,13 @@ describe("sync service", () => {
     expect(normalizeSupabaseUrl("https://example.supabase.co/rest/v1")).toBe("https://example.supabase.co");
     expect(normalizeSupabaseUrl("https://example.supabase.co/rest/v1/")).toBe("https://example.supabase.co");
     expect(normalizeSupabaseUrl(" https://example.supabase.co/ ")).toBe("https://example.supabase.co");
+    expect(normalizeSupabaseAnonKey(" abc123 ")).toBe("abc123");
+  });
+
+  it("detects when the Supabase anon key env var is accidentally set to a URL", () => {
+    expect(
+      getSyncConfigError("https://example.supabase.co", "https://example.supabase.co")
+    ).toMatch(/VITE_SUPABASE_ANON_KEY/);
   });
 
   it("rejects non-v3 or structurally invalid remote payloads", () => {
