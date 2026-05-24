@@ -136,7 +136,7 @@ export function AddTransactionModal({ onAdd, onClose, defaultMonth }: AddTransac
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="text-xs text-ink-muted hover:text-ink-secondary transition-colors cursor-pointer"
         >
-          {showAdvanced ? "− Hide" : "+ Show"} advanced fields (shares, price, strategy, notes)
+          {showAdvanced ? "- Hide" : "+ Show"} advanced fields (shares, price, strategy, notes)
         </button>
 
         {showAdvanced && (

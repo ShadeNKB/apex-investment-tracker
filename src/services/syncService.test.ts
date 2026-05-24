@@ -108,8 +108,14 @@ describe("sync service", () => {
 
   it("merges position metadata by ticker updatedAt", () => {
     const merged = mergeSyncPayloads(
-      payload({ positionMeta: [{ ticker: "VOO", strategy: "Core", updatedAt: "2026-05-01T00:00:00.000Z" }] }),
-      payload({ positionMeta: [{ ticker: "VOO", strategy: "Growth", updatedAt: "2026-05-02T00:00:00.000Z" }] })
+      payload({
+        transactions: [tx({ ticker: "VOO" })],
+        positionMeta: [{ ticker: "VOO", strategy: "Core", updatedAt: "2026-05-01T00:00:00.000Z" }],
+      }),
+      payload({
+        transactions: [tx({ ticker: "VOO" })],
+        positionMeta: [{ ticker: "VOO", strategy: "Growth", updatedAt: "2026-05-02T00:00:00.000Z" }],
+      })
     );
 
     expect(merged.positionMeta).toEqual([{ ticker: "VOO", strategy: "Growth", updatedAt: "2026-05-02T00:00:00.000Z" }]);
@@ -139,5 +145,17 @@ describe("sync service", () => {
     );
 
     expect(merged.deletedIds).toContain("fresh-local-delete");
+  });
+
+  it("drops orphaned position metadata when no merged transaction uses the ticker", () => {
+    const merged = mergeSyncPayloads(
+      payload({ transactions: [], positionMeta: [] }),
+      payload({
+        transactions: [],
+        positionMeta: [{ ticker: "VOO", strategy: "Old plan", updatedAt: "2026-05-01T00:00:00.000Z" }],
+      })
+    );
+
+    expect(merged.positionMeta).toEqual([]);
   });
 });

@@ -68,6 +68,8 @@ export function Transactions({
   const [editTicker, setEditTicker] = useState("");
   const [editAmount, setEditAmount] = useState("");
   const [editType, setEditType] = useState<"buy" | "sell">("buy");
+  const [editShares, setEditShares] = useState("");
+  const [editPricePerShare, setEditPricePerShare] = useState("");
   const [editStrategy, setEditStrategy] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editError, setEditError] = useState("");
@@ -94,6 +96,8 @@ export function Transactions({
     setEditTicker(tx.ticker);
     setEditAmount(String(tx.amount));
     setEditType(tx.type ?? "buy");
+    setEditShares(tx.shares != null ? String(tx.shares) : "");
+    setEditPricePerShare(tx.pricePerShare != null ? String(tx.pricePerShare) : "");
     setEditStrategy(tx.strategy ?? "");
     setEditNotes(tx.notes ?? "");
     setEditError("");
@@ -102,8 +106,18 @@ export function Transactions({
 
   const saveEdit = (tx: Transaction) => {
     const amt = parseFloat(editAmount);
+    const shares = editShares ? parseFloat(editShares) : undefined;
+    const pricePerShare = editPricePerShare ? parseFloat(editPricePerShare) : undefined;
     if (!editMonth || !editTicker.trim() || isNaN(amt) || amt <= 0) {
       setEditError("Month, ticker, and a positive amount are required.");
+      return;
+    }
+    if (shares != null && (!Number.isFinite(shares) || shares <= 0)) {
+      setEditError("Shares must be a positive number.");
+      return;
+    }
+    if (pricePerShare != null && (!Number.isFinite(pricePerShare) || pricePerShare <= 0)) {
+      setEditError("Price per share must be a positive number.");
       return;
     }
     onUpdate(tx.id, {
@@ -112,6 +126,8 @@ export function Transactions({
       ticker: editTicker.trim().toUpperCase(),
       amount: amt,
       type: editType,
+      shares,
+      pricePerShare,
       strategy: editStrategy || undefined,
       notes: editNotes.trim() || undefined,
     });
@@ -274,7 +290,30 @@ export function Transactions({
                             <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="apex-input text-xs py-1.5 pl-5 w-full" />
                           </div>
                         </td>
-                        <td><span className="text-xs text-ink-muted">—</span></td>
+                        <td>
+                          <div className="grid grid-cols-2 gap-2 min-w-[160px]">
+                            <input
+                              type="number"
+                              value={editShares}
+                              onChange={(e) => setEditShares(e.target.value)}
+                              className="apex-input text-xs py-1.5"
+                              aria-label="Shares"
+                              min={0}
+                              step={0.0001}
+                              placeholder="Shares"
+                            />
+                            <input
+                              type="number"
+                              value={editPricePerShare}
+                              onChange={(e) => setEditPricePerShare(e.target.value)}
+                              className="apex-input text-xs py-1.5"
+                              aria-label="Price per share"
+                              min={0}
+                              step={0.01}
+                              placeholder="Price"
+                            />
+                          </div>
+                        </td>
                         <td>
                           <select value={editStrategy} onChange={(e) => setEditStrategy(e.target.value)} className="apex-select text-xs py-1.5 w-36">
                             <option value="">None</option>
@@ -324,14 +363,14 @@ export function Transactions({
                               {tx.shares} x {formatCurrencyPrecise(tx.pricePerShare)}
                             </span>
                           ) : (
-                            <span className="text-xs text-ink-muted">—</span>
+                            <span className="text-xs text-ink-muted">-</span>
                           )}
                         </td>
                         <td>
                           {tx.strategy ? (
                             <span className="text-xs text-ink-secondary">{tx.strategy}</span>
                           ) : (
-                            <span className="text-xs text-ink-muted">—</span>
+                            <span className="text-xs text-ink-muted">-</span>
                           )}
                         </td>
                         <td>
@@ -392,6 +431,28 @@ export function Transactions({
                         />
                       </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        type="number"
+                        value={editShares}
+                        onChange={(e) => setEditShares(e.target.value)}
+                        className="apex-input text-xs py-2"
+                        aria-label="Shares"
+                        min={0}
+                        step={0.0001}
+                        placeholder="Shares"
+                      />
+                      <input
+                        type="number"
+                        value={editPricePerShare}
+                        onChange={(e) => setEditPricePerShare(e.target.value)}
+                        className="apex-input text-xs py-2"
+                        aria-label="Price per share"
+                        min={0}
+                        step={0.01}
+                        placeholder="Price / share"
+                      />
+                    </div>
                     <select value={editStrategy} onChange={(e) => setEditStrategy(e.target.value)} className="apex-select text-xs py-2">
                       <option value="">No strategy</option>
                       {STRATEGY_PRESETS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -424,7 +485,7 @@ export function Transactions({
                           <span className="font-display font-bold text-sm text-ink-primary">{tx.ticker}</span>
                           <span className={`badge badge-${getAssetCategory(tx.ticker).toLowerCase()}`}>{getAssetCategory(tx.ticker)}</span>
                         </div>
-                        <p className="text-xs text-ink-muted">{formatMonth(tx.month)}{tx.strategy ? ` · ${tx.strategy}` : ""}</p>
+                        <p className="text-xs text-ink-muted">{formatMonth(tx.month)}{tx.strategy ? ` - ${tx.strategy}` : ""}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">

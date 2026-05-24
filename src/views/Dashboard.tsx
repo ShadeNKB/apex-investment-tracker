@@ -147,7 +147,7 @@ export function Dashboard({
             />
             <KPICard
               label={formatMonth(getCurrentMonth())}
-              value={metrics.thisMonthTotal > 0 ? formatCurrency(metrics.thisMonthTotal) : "—"}
+              value={metrics.thisMonthTotal > 0 ? formatCurrency(metrics.thisMonthTotal) : "-"}
               sub={
                 metrics.thisMonthTotal > 0
                   ? `${metrics.momDelta >= 0 ? "+" : ""}${formatCurrency(metrics.momDelta)} vs last month`
@@ -158,7 +158,7 @@ export function Dashboard({
             />
             <KPICard
               label="Avg / Month"
-              value={metrics.avgMonthly > 0 ? formatCurrency(metrics.avgMonthly) : "—"}
+              value={metrics.avgMonthly > 0 ? formatCurrency(metrics.avgMonthly) : "-"}
               sub={metrics.streak > 0 ? `${metrics.streak}-month streak` : `${metrics.activeMonths} active months`}
               subColor={metrics.streak >= 3 ? "profit" : "muted"}
               icon={<Calendar size={14} />}
@@ -306,7 +306,7 @@ export function Dashboard({
                     </div>
                     <div className="min-w-0">
                       <p className="font-display font-bold text-sm text-ink-primary truncate">{tx.ticker}</p>
-                      <p className="text-xs text-ink-muted">{formatMonth(tx.month)}{tx.strategy ? ` · ${tx.strategy}` : ""}</p>
+                      <p className="text-xs text-ink-muted">{formatMonth(tx.month)}{tx.strategy ? ` - ${tx.strategy}` : ""}</p>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">

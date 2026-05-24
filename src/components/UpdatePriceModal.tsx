@@ -27,7 +27,7 @@ export function UpdatePriceModal({ position, onSave, onClose }: EditPositionModa
   };
 
   return (
-    <Modal title={`Edit — ${position.ticker}`} onClose={onClose}>
+    <Modal title={`Edit ${position.ticker}`} onClose={onClose}>
       <div className="space-y-4">
         {/* Display name */}
         <div>
@@ -83,7 +83,7 @@ export function UpdatePriceModal({ position, onSave, onClose }: EditPositionModa
           <span className="flex items-center gap-2">
             {isArchived ? <ArchiveRestore size={13} /> : <Archive size={13} />}
             <span className="font-medium">
-              {isArchived ? "Archived — hidden from portfolio" : "Archive position"}
+              {isArchived ? "Archived - hidden from portfolio" : "Archive position"}
             </span>
           </span>
           <span className={`w-8 h-4 rounded-full relative transition-colors ${isArchived ? "bg-warn/40" : "bg-[#243044]"}`}>

@@ -157,7 +157,7 @@ export function Portfolio({
                         {pos.meta.strategy ? (
                           <span className="text-xs text-ink-secondary">{pos.meta.strategy}</span>
                         ) : (
-                          <span className="text-xs text-ink-muted">—</span>
+                          <span className="text-xs text-ink-muted">-</span>
                         )}
                       </td>
                       <td className="text-right">

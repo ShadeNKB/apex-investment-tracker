@@ -197,7 +197,9 @@ export function mergeSyncPayloads(local: SyncPayload, remote: SyncPayload): Sync
   const allTickers = new Set<string>([...localMetaMap.keys(), ...remoteMetaMap.keys()]);
 
   const positionMeta: PositionMeta[] = [];
+  const liveTickers = new Set(transactions.map((transaction) => transaction.ticker));
   for (const ticker of allTickers) {
+    if (!liveTickers.has(ticker)) continue;
     const l = localMetaMap.get(ticker);
     const r = remoteMetaMap.get(ticker);
     if (!l) { positionMeta.push(r!); continue; }
@@ -243,7 +245,7 @@ export async function pushSync(syncId: string, data: SyncPayload): Promise<void>
   const serialized = JSON.stringify(data);
   if (serialized.length > PAYLOAD_WARN_BYTES) {
     if (import.meta.env.DEV) {
-      console.warn(`[sync] payload is ${(serialized.length / 1024).toFixed(0)} KB — approaching row limit`);
+      console.warn(`[sync] payload is ${(serialized.length / 1024).toFixed(0)} KB - approaching row limit`);
     }
     if (serialized.length > 1024 * 1024) throw new PayloadTooLargeError(serialized.length);
   }

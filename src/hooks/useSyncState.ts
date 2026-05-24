@@ -41,12 +41,14 @@ export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [syncError, setSyncError] = useState<string | null>(syncConfigError);
 
-  // Mutable refs — always-current values accessible inside async closures
+  // Mutable refs: always-current values accessible inside async closures
   // without stale-closure problems. Equivalent to Zustand's get().
   const syncIdRef = useRef<string | null>(null);
   const exportBackupRef = useRef(exportBackup);
   const applyRef = useRef(applySync);
   const inFlightRef = useRef<Promise<void> | null>(null);
+  const inFlightSyncIdRef = useRef<string | null>(null);
+  const inFlightTokenRef = useRef<symbol | null>(null);
   const setupGenRef = useRef(0);
   const realtimeUnsubRef = useRef<(() => void) | null>(null);
   const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,18 +67,21 @@ export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
     if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
   }, []);
 
-  // Core sync cycle: pull remote → merge → apply locally → push merged.
+  // Core sync cycle: pull remote -> merge -> apply locally -> push merged.
   // Accepts an explicit `id` override for use during setupSync (before
   // setSyncId has propagated through React state).
   const triggerSync = useCallback(async (explicitId?: string): Promise<void> => {
     const id = explicitId ?? syncIdRef.current;
     if (!id || !syncEnabled) return;
 
-    // Reuse any in-flight sync — prevents push-during-pull races.
-    if (inFlightRef.current) return inFlightRef.current;
+    // Reuse only same-UUID in-flight syncs.
+    if (inFlightRef.current && inFlightSyncIdRef.current === id) return inFlightRef.current;
 
     setCloudStatus("syncing");
     setSyncError(null);
+    const syncToken = Symbol(id);
+    inFlightSyncIdRef.current = id;
+    inFlightTokenRef.current = syncToken;
     inFlightRef.current = (async () => {
       try {
         const remote = await pullSync(id);
@@ -105,7 +110,7 @@ export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
         syncApplying.value = false;
         setCloudStatus("error");
         setSyncError(getSyncErrorMessage(err));
-        // Exponential backoff: 3s, 6s, 12s … capped at 2 min.
+        // Exponential backoff: 3s, 6s, 12s, capped at 2 min.
         if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
         retryAttemptRef.current = Math.min(retryAttemptRef.current + 1, 8);
         const delay = Math.min(MAX_RETRY_DELAY_MS, 1500 * Math.pow(2, retryAttemptRef.current));
@@ -115,15 +120,19 @@ export function useSyncState({ exportBackup, applySync }: SyncStateConfig) {
         }, delay);
         throw err;
       } finally {
-        inFlightRef.current = null;
-        if (dirtyDuringSyncRef.current) {
-          dirtyDuringSyncRef.current = false;
-          triggerSyncRef.current(id).catch((err) => console.error("[sync] follow-up sync", err));
+        if (inFlightTokenRef.current === syncToken) {
+          inFlightRef.current = null;
+          inFlightSyncIdRef.current = null;
+          inFlightTokenRef.current = null;
+          if (dirtyDuringSyncRef.current) {
+            dirtyDuringSyncRef.current = false;
+            triggerSyncRef.current(id).catch((err) => console.error("[sync] follow-up sync", err));
+          }
         }
       }
     })();
     return inFlightRef.current;
-  }, []); // stable — reads from refs, no deps needed
+  }, []); // stable: reads from refs, no deps needed
 
   useEffect(() => {
     triggerSyncRef.current = triggerSync;

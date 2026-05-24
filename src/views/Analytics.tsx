@@ -172,13 +172,13 @@ export function Analytics({
         />
         <KPICard
           label="Best Month"
-          value={bestMonth ? formatCurrency(bestMonth[1]) : "—"}
+          value={bestMonth ? formatCurrency(bestMonth[1]) : "-"}
           sub={bestMonth ? formatMonth(bestMonth[0]) : ""}
           subColor="profit"
         />
         <KPICard
           label="3M Run Rate"
-          value={recentAvg > 0 ? formatCurrency(recentAvg) : "—"}
+          value={recentAvg > 0 ? formatCurrency(recentAvg) : "-"}
           sub="avg of last 3 months"
           subColor="muted"
         />
@@ -368,7 +368,7 @@ export function Analytics({
                     <tr key={month}>
                       <td>
                         <span className={`text-sm ${isCurrent ? "text-profit font-semibold" : "text-ink-secondary"}`}>
-                          {formatMonth(month)}{isCurrent ? " ·" : ""}
+                          {formatMonth(month)}{isCurrent ? " -" : ""}
                           {isCurrent && <span className="text-xs ml-1 text-profit/70">current</span>}
                         </span>
                       </td>

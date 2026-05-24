@@ -70,6 +70,8 @@ The same UUID can be used across phone, desktop, tablet, browser profiles, and P
 - Add/edit/delete syncs across devices.
 - Deleted transactions stay deleted through tombstones.
 - Newer edits win by `updatedAt`.
+- Switching to a different UUID while another sync is in flight does not reuse the old bucket's request.
+- Position metadata is kept only for tickers with live merged transactions, preventing old notes from returning after a full clear.
 - Corrupted remote payloads are rejected before applying locally.
 - Offline edits stay local and retry when connectivity returns.
 - Paired devices update through UUID-scoped Realtime Broadcast plus safe RPC pull/merge.
@@ -80,7 +82,8 @@ Run locally before deploying:
 
 ```bash
 npm run lint
-npm test -- --run
+npm run typecheck
+npm test
 npm run build
 npm audit --audit-level=moderate
 ```

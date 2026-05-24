@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 18" />
   <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript Strict" />
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 8" />
-  <img src="https://img.shields.io/badge/tests-25%20passing-22C55E?style=flat-square" alt="25 tests passing" />
+  <img src="https://img.shields.io/badge/tests-31%20passing-22C55E?style=flat-square" alt="31 tests passing" />
   <img src="https://img.shields.io/badge/license-MIT-22D3EE?style=flat-square" alt="MIT" />
 </p>
 
@@ -74,6 +74,7 @@ Local-only mode requires no environment variables.
 
 ```bash
 npm run dev          # Vite dev server
+npm run typecheck    # TypeScript only
 npm run build        # TypeScript + production build
 npm run preview      # Preview built app
 npm run lint         # ESLint
@@ -121,8 +122,10 @@ Full guide: [docs/CROSS_DEVICE_SYNC.md](docs/CROSS_DEVICE_SYNC.md).
 - Transactions merge by `updatedAt ?? timestamp`.
 - Position metadata merges by `updatedAt`.
 - Deleted transaction IDs are tombstoned so remote devices do not resurrect them.
+- Position metadata without a live transaction is pruned during sync so a cleared portfolio does not rehydrate stale ticker notes.
 - Remote payloads are validated before applying locally.
 - In-flight syncs are deduplicated.
+- In-flight sync cycles are isolated per UUID, so changing pairing codes cannot attach to the wrong bucket.
 - Local edits during an in-flight sync schedule a follow-up sync.
 - Manual backup/import remains available if cloud sync is not configured.
 
@@ -169,7 +172,8 @@ Current verification target:
 
 ```bash
 npm run lint
-npm test -- --run
+npm run typecheck
+npm test
 npm run build
 npm audit --audit-level=moderate
 ```
@@ -181,8 +185,11 @@ Current coverage includes:
 - investment math
 - chart compaction
 - sync payload validation
+- UUID pairing race protection
 - tombstone merge/capping
+- orphaned metadata pruning
 - SyncPanel pairing states
+- transaction share/price editing
 
 ---
 

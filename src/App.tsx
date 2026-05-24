@@ -119,7 +119,7 @@ function App() {
       />
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 pb-20 lg:pb-0">
+      <main className="flex-1 min-w-0 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
         {/* Mobile header */}
         <div className="lg:hidden flex items-center justify-between px-4 py-4 border-b border-[#1A2435]">
           <div className="flex items-center gap-2">
