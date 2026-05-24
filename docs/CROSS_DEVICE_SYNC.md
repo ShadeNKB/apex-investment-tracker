@@ -8,6 +8,7 @@ Apex works fully offline with no environment variables. Cross-device pairing is 
 - Other devices join with the same UUID.
 - Every device keeps its own local copy in `localStorage`.
 - Supabase stores one JSON payload per UUID so devices can pull, merge, and push.
+- Realtime Broadcast wakes paired devices immediately; polling/focus/online events act as fallback recovery.
 - There is no account system in Apex. The UUID is the shared secret.
 
 Anyone with the UUID can read and update that synced portfolio. Treat the sync code like a password.
@@ -71,6 +72,7 @@ The same UUID can be used across phone, desktop, tablet, browser profiles, and P
 - Newer edits win by `updatedAt`.
 - Corrupted remote payloads are rejected before applying locally.
 - Offline edits stay local and retry when connectivity returns.
+- Paired devices update through UUID-scoped Realtime Broadcast plus safe RPC pull/merge.
 
 ## Validation Checklist
 
@@ -87,7 +89,7 @@ After deployment:
 
 1. Pair two browser profiles with the same UUID.
 2. Add a transaction on profile A.
-3. Confirm profile B receives it after polling/focus/manual sync.
+3. Confirm profile B receives it after realtime broadcast or fallback polling/focus/manual sync.
 4. Edit the transaction on B.
 5. Confirm A receives the newer edit.
 6. Delete the transaction on A.

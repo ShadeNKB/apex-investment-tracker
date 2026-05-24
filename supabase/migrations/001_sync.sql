@@ -19,15 +19,18 @@ drop policy if exists "anon can read sync buckets" on public.sync_buckets;
 drop policy if exists "anon can upsert sync buckets" on public.sync_buckets;
 drop policy if exists "anon can update sync buckets" on public.sync_buckets;
 
+drop function if exists public.pull_sync_bucket(uuid);
+drop function if exists public.push_sync_bucket(uuid, jsonb);
+
 create or replace function public.pull_sync_bucket(bucket_id uuid)
 returns jsonb
 language sql
 security definer
 set search_path = public
 as $$
-  select payload
+  select sync_buckets.payload
   from public.sync_buckets
-  where sync_id = bucket_id
+  where sync_buckets.sync_id = bucket_id
 $$;
 
 create or replace function public.push_sync_bucket(bucket_id uuid, bucket_payload jsonb)

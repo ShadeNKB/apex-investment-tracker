@@ -5,261 +5,230 @@
 <h1 align="center">Apex</h1>
 
 <p align="center">
-  <strong>Your portfolio, at a glance - local-first, with optional Supabase sync.</strong><br/>
-  A fast, local-first investment tracker with allocation breakdowns, contribution trends, and strategy-tagged positions.
+  <strong>Local-first investment tracking with optional UUID device pairing.</strong><br/>
+  A fast portfolio dashboard for contributions, allocation, position strategy, and cross-device sync without app accounts.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 18" />
   <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript Strict" />
-  <img src="https://img.shields.io/badge/PWA-Installable-8B5CF6?style=flat-square" alt="PWA" />
-  <img src="https://img.shields.io/badge/bundle-~10%20KB%20gzip-22C55E?style=flat-square" alt="~10 KB gzip shell" />
-  <img src="https://img.shields.io/badge/tests-11%20passing-22C55E?style=flat-square" alt="11 tests" />
+  <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 8" />
+  <img src="https://img.shields.io/badge/tests-25%20passing-22C55E?style=flat-square" alt="25 tests passing" />
   <img src="https://img.shields.io/badge/license-MIT-22D3EE?style=flat-square" alt="MIT" />
 </p>
 
 <p align="center">
-  <a href="https://apex-investment-tracker.vercel.app"><strong>▶ Try the demo</strong></a>
-  &nbsp;·&nbsp;
-  <a href="#why-apex">Why Apex</a>
-  &nbsp;·&nbsp;
+  <a href="https://apex-investment-tracker.vercel.app"><strong>Try the demo</strong></a>
+  &nbsp;|&nbsp;
   <a href="#highlights">Highlights</a>
-  &nbsp;·&nbsp;
+  &nbsp;|&nbsp;
   <a href="#quick-start">Quick start</a>
-  &nbsp;·&nbsp;
+  &nbsp;|&nbsp;
   <a href="docs/CROSS_DEVICE_SYNC.md">Cross-device sync</a>
-  &nbsp;·&nbsp;
-  <a href="#architecture">Architecture</a>
+  &nbsp;|&nbsp;
+  <a href="#deployment">Deployment</a>
 </p>
 
 ---
 
 ## Why Apex
 
-Most investment dashboards require an account, an API key, or a subscription before you can see anything useful. Apex skips all of that.
+Apex is designed for a personal portfolio workflow: quick logging, clear allocation, and reliable ownership of data.
 
-- **Offline-first.** Every transaction is saved to `localStorage`; sync is optional and never sits in the hot path.
-- **Instant clarity.** Log a buy or sell, and every view — allocation donut, cumulative chart, cost basis — updates in real time.
-- **Strategy-aware.** Tag positions with custom strategy labels (DCA, Growth, Hedge…) and filter your entire history by them.
-- **Keyboard-driven.** `N` to add a transaction, `G` + `D/P/T/A` to navigate — never take your hands off the keyboard.
-- **Installable.** Add to your home screen on iOS or Android and use it offline, exactly like a native app.
+- **Local-first by default.** The app works without accounts, servers, or environment variables.
+- **Optional UUID sync.** Pair laptop, phone, tablet, browser profiles, and PWA installs with one shared sync code.
+- **Finance-focused UX.** Track cost basis, contribution rhythm, allocation, categories, strategy tags, notes, and position metadata.
+- **Backup remains available.** JSON export/import stays as a fallback rather than the main persistence workflow.
+- **Production-oriented.** Strict TypeScript, lint/test/build gates, chunked chart views, and Vercel-ready headers.
 
 ---
 
 ## Highlights
 
-| | |
-|---|---|
-| **Dashboard** | KPI cards (total invested, positions, monthly delta, streak), cumulative area chart, allocation donut, recent activity feed |
-| **Portfolio** | Cost basis per position, allocation bars, sortable table, per-ticker display names and strategy labels |
-| **Transactions** | Full history with search, filters (month / asset / type), inline two-step delete confirmation, and edit-in-place |
-| **Analytics** | Stacked area/bar trends, category and strategy breakdowns, year-over-year comparison, monthly breakdown table |
-| **Backup & restore** | One-click JSON export and import with deep schema validation — invalid files are rejected, never silently corrupt state |
-| **Optional sync** | UUID-scoped Supabase relay for cross-device persistence without accounts |
-| **PWA** | Installable on iOS & Android, works offline after first load, respects iOS safe areas |
-| **Accessible** | `aria-live` announcements, focus traps, keyboard navigation throughout |
+| Area | Details |
+| --- | --- |
+| Dashboard | KPI cards, cumulative contribution chart, allocation donut, recent activity |
+| Portfolio | Cost basis, allocation bars, position metadata, strategy labels, archive support |
+| Transactions | Search, filters, pagination, edit-in-place, two-step delete confirmation |
+| Analytics | Monthly trends, category and strategy breakdowns, yearly comparison |
+| Sync | UUID device pairing via Supabase RPC and Realtime Broadcast |
+| Backup | Versioned JSON export/import with runtime validation |
+| Mobile | Bottom navigation, mobile data actions, accessible modals, safe-area handling |
 
 ---
 
-## Try it
+## Quick Start
 
-| | Where | Notes |
-|--|------|-------|
-| **▶ Demo** | [apex-investment-tracker.vercel.app](https://apex-investment-tracker.vercel.app) | Add a few transactions and explore — data stays in your browser |
-| **📱 Install** | Open the demo on your phone → Share → **Add to Home Screen** | Runs fullscreen, works offline |
-| **🧹 Reset** | Sidebar → **Clear all data** | Wipes all transactions and position metadata |
-| **💾 Backup** | Sidebar → **Export backup** | Downloads a versioned JSON snapshot |
-| **💻 Self-host** | [Quick start ↓](#quick-start) | Clone and run in under a minute |
-
----
-
-## Quick start
-
-**Requirements:** Node.js 18+, npm
+**Requirements:** Node.js 18+ and npm.
 
 ```bash
 git clone https://github.com/ShadeNKB/apex-investment-tracker.git
 cd apex-investment-tracker
 npm install
-npm run dev          # http://localhost:3000
+npm run dev
 ```
 
-No environment variables are required for local-only use. Add the optional Supabase variables below when you want cross-device sync.
+Local-only mode requires no environment variables.
 
 ### Scripts
 
 ```bash
-npm run dev          # Dev server with HMR
-npm run build        # Production build → dist/
-npm run preview      # Preview production build locally
-npm run lint         # ESLint (0 errors)
-npm test             # Vitest unit tests (11/11)
+npm run dev          # Vite dev server
+npm run build        # TypeScript + production build
+npm run preview      # Preview built app
+npm run lint         # ESLint
+npm test             # Vitest
 ```
+
+---
+
+## Cross-Device Sync
+
+Apex sync is optional. The browser remains the source of truth, while Supabase stores one JSON payload per UUID sync code.
+
+The sync flow:
+
+1. Device A generates a UUID sync code.
+2. Device B joins with the same UUID.
+3. Local data is pulled, merged, applied, and pushed.
+4. Paired devices wake each other through UUID-scoped Supabase Realtime Broadcast.
+5. Polling, focus, and online events act as fallback recovery.
+
+Data access uses exact-key RPC functions:
+
+- `pull_sync_bucket(bucket_id uuid)`
+- `push_sync_bucket(bucket_id uuid, bucket_payload jsonb)`
+
+The Supabase table is not directly granted to anon clients. Anyone with the UUID can still read/write that synced portfolio, so treat the sync code like a password.
+
+Full guide: [docs/CROSS_DEVICE_SYNC.md](docs/CROSS_DEVICE_SYNC.md).
 
 ---
 
 ## Architecture
 
-### Local-first by design
-
-On load, the app hydrates from `localStorage`. Every action — logging a transaction, editing a position, changing a strategy tag — writes back immediately. There is no server in the hot path; latency is zero.
-
-```
-┌──────────────────────────────────────────────────┐
-│  React 18 views (Dashboard / Portfolio / …)      │
-│       │                                          │
-│       ▼                                          │
-│  usePortfolio hook  (single source of truth)     │
-│       │                                          │
-│       ▼                                          │
-│  localStorage  (always available, never stale)   │
-└──────────────────────────────────────────────────┘
-```
-
-All state is owned by a single `usePortfolio` hook. Views are lazy-loaded chunks — they don't download until first navigation. Recharts is isolated in its own manual chunk and only loads when a chart view renders.
-
-### Data model
+### Local State
 
 | Key | Contents |
-|-----|----------|
+| --- | --- |
 | `investment_spending` | Transaction array |
-| `apex_position_meta` | Per-ticker display name, strategy, archive flag |
-| `apex_deleted_ids` | Transaction tombstones used by sync deletion propagation |
-| `apex_sync_id` | Optional UUID sync bucket ID |
+| `apex_position_meta` | Per-ticker display name, strategy, notes, archived flag |
+| `apex_deleted_ids` | Deleted transaction tombstones for sync |
+| `apex_sync_id` | Optional persisted UUID sync code |
 
-Backups export both stores as a versioned JSON file. Imports validate schema before replacing local data.
+### Sync Safety
 
-### Optional sync
+- Transactions merge by `updatedAt ?? timestamp`.
+- Position metadata merges by `updatedAt`.
+- Deleted transaction IDs are tombstoned so remote devices do not resurrect them.
+- Remote payloads are validated before applying locally.
+- In-flight syncs are deduplicated.
+- Local edits during an in-flight sync schedule a follow-up sync.
+- Manual backup/import remains available if cloud sync is not configured.
 
-Apex sync is local-first. The browser remains the source of truth, while Supabase stores one JSON payload per sync UUID so another device can pull, merge, and push the same bucket through exact-key RPC functions.
+### Performance
 
-To enable sync:
+- Main views are lazy-loaded.
+- Recharts is isolated into a vendor chunk.
+- Large chart series are compacted into top assets plus `Other`.
+- Transactions are paginated for large histories.
+
+---
+
+## Deployment
+
+### Local-Only Deployment
+
+Build and deploy `dist/` to any static host.
+
+```bash
+npm run build
+```
+
+### Sync-Enabled Deployment
 
 1. Create a Supabase project.
-2. Run `supabase/migrations/001_sync.sql` in the Supabase SQL editor.
-3. Add these env vars locally or in Vercel:
+2. Run `supabase/migrations/001_sync.sql` in the Supabase SQL Editor.
+3. Add these environment variables in Vercel:
 
 ```bash
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-Security model: the sync UUID is a bearer secret. Anyone with the code can read and update that sync bucket, so treat it like a password and avoid sharing it in chats or screenshots. The migration keeps the table private to anon clients and exposes only `pull_sync_bucket` / `push_sync_bucket` RPC calls.
+4. Redeploy.
+5. Pair devices through the app's Sync panel.
 
-Full setup guide: [docs/CROSS_DEVICE_SYNC.md](docs/CROSS_DEVICE_SYNC.md).
-
-### Performance
-
-| Chunk | Gzip |
-|-------|------|
-| App shell + hook | ~10 KB |
-| Dashboard | ~3.3 KB |
-| Analytics | ~3.2 KB |
-| Transactions | ~3.7 KB |
-| Portfolio | ~2.2 KB |
-| Recharts (lazy, shared) | ~156 KB |
-
-View chunks load on first navigation. Recharts loads only when a chart view renders.
+Use the anon public key only. Never use the service role key in the frontend.
 
 ---
 
-## Deployment
+## Quality Gates
 
-### Vercel (recommended)
-
-Push to GitHub, then import the repo on [vercel.com](https://vercel.com). Vercel auto-detects Vite. `vercel.json` is committed with:
-
-- `/assets/*` → `Cache-Control: max-age=31536000, immutable` (content-hashed chunks)
-- `index.html` / `manifest.json` → `no-cache` (always fresh)
-- Security headers on all routes (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`)
-
-No environment variables are required for local-only deployments. For sync-enabled deployments, set:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-
-### Any static host
+Current verification target:
 
 ```bash
-npm run build        # output → dist/
+npm run lint
+npm test -- --run
+npm run build
+npm audit --audit-level=moderate
 ```
 
-Upload `dist/`. No server-side routing rewrites needed — navigation is React state, not URL paths.
+Current coverage includes:
 
----
-
-## Quality
-
-```
-npm run lint    → 0 errors
-npm test        → 11/11 passing
-npm run build   → clean (tsc + vite, 0 warnings)
-```
-
-- Strict TypeScript, no `any`
-- Single-responsibility components, `useCallback` throughout for stable references
-- No `!important` overrides — all variants use dedicated CSS classes
-- Inline two-step delete confirmation — no native `window.confirm()`
-- `aria-live` region at boot for screen reader toast announcements
-- iOS safe-area insets on toast positioning
+- storage hardening
+- restore validation
+- investment math
+- chart compaction
+- sync payload validation
+- tombstone merge/capping
+- SyncPanel pairing states
 
 ---
 
 ## FAQ
 
 <details>
-<summary><b>Do I need an account or API key?</b></summary>
+<summary><b>Do I need an Apex account?</b></summary>
 <br/>
-No account is required. Apex stores data in your browser's <code>localStorage</code>. If you enable optional Supabase sync, encrypted transport is used to relay your UUID-scoped payload between your own devices.
+No. Apex has no app account system. Local-only data stays in browser storage. Optional sync uses a UUID code as the shared secret.
 </details>
 
 <details>
-<summary><b>Where is my data stored?</b></summary>
+<summary><b>Can anyone with the UUID access my data?</b></summary>
 <br/>
-In <code>localStorage</code> under two keys: <code>investment_spending</code> (transactions) and <code>apex_position_meta</code> (position display names and strategy tags). You can export a JSON backup at any time from the sidebar.
+Yes. Treat the UUID like a password. Anyone with it can read and update that synced portfolio.
 </details>
 
 <details>
-<summary><b>Can I track multiple asset classes?</b></summary>
+<summary><b>What if Supabase is not configured?</b></summary>
 <br/>
-Yes. Each transaction records a ticker, category (ETF, Stock, Crypto, Bond, Cash, Other), buy/sell type, amount, shares, price per share, and optional strategy tags. The Portfolio and Analytics views break down allocation across all categories.
+The app remains fully usable in local-only mode. Backup/export still works.
 </details>
 
 <details>
-<summary><b>Can I install it on my phone?</b></summary>
+<summary><b>Does delete sync safely?</b></summary>
 <br/>
-Yes — it's a PWA. <b>iOS:</b> open the site in Safari → Share → <i>Add to Home Screen</i>. <b>Android:</b> Chrome menu → <i>Install app</i>. It runs fullscreen and works offline.
-</details>
-
-<details>
-<summary><b>How do I move my data to a new browser?</b></summary>
-<br/>
-Sidebar → <b>Export backup</b>. On the new browser, sidebar → <b>Import backup</b>. All transactions and position metadata transfer in full.
-</details>
-
-<details>
-<summary><b>What happens if I import a bad JSON file?</b></summary>
-<br/>
-The import validates the full schema before touching any local state. Invalid files are rejected with an error toast — your existing data is never overwritten.
+Yes. Deleted transaction IDs are stored as tombstones and included in merge logic to prevent resurrection.
 </details>
 
 ---
 
-## Tech stack
+## Tech Stack
 
 | Layer | Choice |
-|-------|--------|
-| Framework | React 18 + TypeScript (strict) |
-| Build | Vite 5 |
-| Styling | Tailwind CSS 3 + custom design tokens |
-| Charts | Recharts 2 (lazy-loaded, manual chunk) |
-| State | Single `usePortfolio` hook + `localStorage` |
+| --- | --- |
+| Framework | React 18 + TypeScript |
+| Build | Vite 8 |
+| Styling | Tailwind CSS + custom design tokens |
+| Charts | Recharts |
+| State | Local React hooks + `localStorage` |
+| Sync | Supabase RPC + Realtime Broadcast |
 | Testing | Vitest + Testing Library |
-| Lint | ESLint flat config + typescript-eslint |
-| Deploy | Vercel |
+| Deploy | Vercel/static hosting |
 
 ---
 
 ## License
 
-[MIT](LICENSE) — built by [ShadeNKB](https://github.com/ShadeNKB)
+[MIT](LICENSE) - built by [ShadeNKB](https://github.com/ShadeNKB)

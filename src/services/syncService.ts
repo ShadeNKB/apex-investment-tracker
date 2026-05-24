@@ -5,7 +5,7 @@
 // - Tombstone set (`deletedIds`) is unioned across devices.
 // - The Supabase JS SDK is lazy-loaded so unconfigured users never pay for it.
 
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import type { SyncPayload, Transaction, PositionMeta } from "../types";
 import { normalizeTransaction, normalizePositionMeta } from "../utils/storage";
 
@@ -189,6 +189,12 @@ export async function pushSync(syncId: string, data: SyncPayload): Promise<void>
   const { error } = await client
     .rpc("push_sync_bucket", { bucket_id: syncId, bucket_payload: data });
   if (error) throw error;
+
+  await client.channel(`apex-sync:${syncId}`).send({
+    type: "broadcast",
+    event: "sync",
+    payload: { updatedAt: data.exportedAt },
+  });
 }
 
 export async function pullSync(syncId: string): Promise<SyncPayload | null> {
@@ -203,8 +209,9 @@ export async function pullSync(syncId: string): Promise<SyncPayload | null> {
 }
 
 /**
- * Poll for remote changes. Reads/writes go through UUID-scoped RPC functions
- * so anon clients do not need broad table grants.
+ * Subscribe to UUID-scoped realtime broadcasts with polling as a fallback.
+ * Reads/writes still go through RPC functions, so anon clients do not need
+ * broad table grants.
  */
 export async function subscribeSync(
   syncId: string,
@@ -214,6 +221,13 @@ export async function subscribeSync(
   if (!client) return () => {};
 
   let active = true;
+  const channel: RealtimeChannel = client
+    .channel(`apex-sync:${syncId}`, { config: { broadcast: { self: false } } })
+    .on("broadcast", { event: "sync" }, () => {
+      if (active) onUpdate();
+    })
+    .subscribe();
+
   const interval = setInterval(() => {
     if (active) onUpdate();
   }, SYNC_POLL_INTERVAL_MS);
@@ -227,6 +241,7 @@ export async function subscribeSync(
   return () => {
     active = false;
     clearInterval(interval);
+    client.removeChannel(channel);
     window.removeEventListener("online", onOnlineOrFocus);
     window.removeEventListener("focus", onOnlineOrFocus);
   };
