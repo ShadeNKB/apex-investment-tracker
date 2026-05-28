@@ -74,11 +74,15 @@ const svg = `
     <!-- subtitle -->
     <text x="0" y="280" font-family="Inter, system-ui, sans-serif"
           font-size="22" font-weight="400" fill="${MUTED}">
-      Portfolio, allocation, contributions — no accounts, your data.
+      Portfolio · allocation · contributions
+    </text>
+    <text x="0" y="308" font-family="Inter, system-ui, sans-serif"
+          font-size="22" font-weight="400" fill="${MUTED}">
+      No accounts. Your data stays yours.
     </text>
 
     <!-- feature chips -->
-    <g transform="translate(0, 340)" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="500">
+    <g transform="translate(0, 370)" font-family="Inter, system-ui, sans-serif" font-size="18" font-weight="500">
       <g>
         <rect x="0" y="0" width="170" height="44" rx="22" fill="${PANEL}" stroke="${ACCENT}" stroke-width="1" stroke-opacity="0.4"/>
         <text x="85" y="29" fill="${ACCENT}" text-anchor="middle">Cross-device sync</text>
