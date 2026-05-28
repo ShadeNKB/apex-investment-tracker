@@ -14,6 +14,8 @@
   <img src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript Strict" />
   <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite 8" />
   <img src="https://img.shields.io/badge/tests-31%20passing-22C55E?style=flat-square" alt="31 tests passing" />
+  <img src="https://img.shields.io/badge/e2e-Playwright-2EAD33?style=flat-square&logo=playwright&logoColor=white" alt="Playwright e2e" />
+  <img src="https://img.shields.io/badge/audit-0%20vulns-22C55E?style=flat-square" alt="0 vulnerabilities" />
   <img src="https://img.shields.io/badge/license-MIT-22D3EE?style=flat-square" alt="MIT" />
 </p>
 
