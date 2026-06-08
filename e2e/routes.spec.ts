@@ -4,7 +4,6 @@ import { test, expect, Page } from "@playwright/test";
 
 async function waitForApp(page: Page) {
   await page.waitForLoadState("networkidle");
-  // App is ready when loading spinner is gone
   await page.waitForSelector(".animate-spin", { state: "detached", timeout: 10000 }).catch(() => {});
 }
 
@@ -15,11 +14,24 @@ async function navigateTo(page: Page, viewId: "dashboard" | "portfolio" | "trans
     transactions: /transactions/i,
     analytics: /analytics/i,
   };
-  await page.getByRole("link", { name: labels[viewId] })
-    .or(page.getByRole("button", { name: labels[viewId] }))
+  await page.getByRole("button", { name: labels[viewId] })
+    .or(page.getByRole("link", { name: labels[viewId] }))
     .first()
     .click();
   await page.waitForTimeout(300);
+}
+
+async function openAddModal(page: Page) {
+  await page.getByRole("button", { name: /add transaction/i }).first().click();
+  await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });
+}
+
+async function addTransaction(page: Page, ticker: string, amount: string) {
+  await openAddModal(page);
+  await page.locator("#tx-ticker").fill(ticker);
+  await page.locator("#tx-amount").fill(amount);
+  await page.getByRole("button", { name: /record/i }).click();
+  await expect(page.getByRole("dialog")).not.toBeVisible({ timeout: 3000 });
 }
 
 // ─── app boot ──────────────────────────────────────────────────────────────
@@ -38,9 +50,7 @@ test.describe("App boot", () => {
   test("renders dashboard view by default", async ({ page }) => {
     await page.goto("/");
     await waitForApp(page);
-    // Dashboard should show portfolio metrics or empty state
     await expect(page.locator("body")).not.toBeEmpty();
-    // No crash screen
     await expect(page.getByText(/something went wrong/i)).not.toBeVisible();
   });
 });
@@ -68,12 +78,11 @@ test.describe("Navigation", () => {
     await expect(page.getByText(/analytics/i).first()).toBeVisible();
   });
 
-  // TODO(e2e): selector unverified against real modal markup — inspect DOM and re-enable
-  test.fixme("keyboard shortcut n opens Add Transaction modal", async ({ page }) => {
+  test("keyboard shortcut n opens Add Transaction modal", async ({ page }) => {
+    // Click a neutral area so focus is not inside an input
+    await page.locator("body").click({ position: { x: 10, y: 10 } });
     await page.keyboard.press("n");
-    await expect(
-      page.getByRole("dialog").or(page.getByText(/add transaction/i).first())
-    ).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });
   });
 });
 
@@ -85,61 +94,35 @@ test.describe("Add transaction", () => {
     await waitForApp(page);
   });
 
-  async function openAddModal(page: Page) {
-    // Try "+" button first, fall back to keyboard shortcut
-    const addBtn = page.getByRole("button", { name: /add|new|\+/i }).first();
-    if (await addBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await addBtn.click();
-    } else {
-      await page.keyboard.press("n");
-    }
-    await expect(
-      page.getByRole("dialog").or(page.getByText(/add transaction/i))
-    ).toBeVisible({ timeout: 3000 });
-  }
-
-  // TODO(e2e): add-button selector and modal role unverified — inspect DOM and re-enable
-  test.fixme("opens add transaction modal", async ({ page }) => {
+  test("opens add transaction modal", async ({ page }) => {
     await openAddModal(page);
     await expect(page.getByRole("dialog")).toBeVisible();
   });
 
-  // TODO(e2e): depends on openAddModal() helper which uses unverified selectors
-  test.fixme("modal closes on cancel/escape", async ({ page }) => {
+  test("modal closes on escape", async ({ page }) => {
     await openAddModal(page);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).not.toBeVisible({ timeout: 3000 });
   });
 
-  // TODO(e2e): form-field selectors unverified against real markup
-  test.fixme("adds a buy transaction and it appears in transactions view", async ({ page }) => {
+  test("modal closes on cancel button", async ({ page }) => {
     await openAddModal(page);
+    await page.getByRole("button", { name: /cancel/i }).click();
+    await expect(page.getByRole("dialog")).not.toBeVisible({ timeout: 3000 });
+  });
 
-    // Fill in ticker
-    const tickerInput = page.getByPlaceholder(/ticker|symbol/i).or(
-      page.getByLabel(/ticker|symbol/i)
-    ).first();
-    await tickerInput.fill("AAPL");
-
-    // Fill shares
-    const sharesInput = page.getByPlaceholder(/shares|quantity/i).or(
-      page.getByLabel(/shares|quantity/i)
-    ).first();
-    await sharesInput.fill("10");
-
-    // Fill price
-    const priceInput = page.getByPlaceholder(/price/i).or(
-      page.getByLabel(/price/i)
-    ).first();
-    await priceInput.fill("150");
-
-    // Submit
-    const submitBtn = page.getByRole("button", { name: /add|save|submit|buy/i }).last();
-    await submitBtn.click();
-
-    // Check transaction appears
+  test("adds a buy transaction and it appears in transactions view", async ({ page }) => {
+    await addTransaction(page, "AAPL", "1500");
     await navigateTo(page, "transactions");
-    await expect(page.getByText("AAPL")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("table").getByText("AAPL").first()).toBeVisible({ timeout: 5000 });
+  });
+
+  test("record button is disabled until required fields are filled", async ({ page }) => {
+    await openAddModal(page);
+    await expect(page.getByRole("button", { name: /record/i })).toBeDisabled();
+    await page.locator("#tx-ticker").fill("AAPL");
+    await page.locator("#tx-amount").fill("1500");
+    await expect(page.getByRole("button", { name: /record/i })).toBeEnabled();
   });
 });
 
@@ -151,52 +134,43 @@ test.describe("Backup and restore", () => {
     await waitForApp(page);
   });
 
-  // TODO(e2e): backup button location unverified — likely in a menu/settings area
-  test.fixme("backup triggers a file download", async ({ page }) => {
+  test("backup triggers a file download", async ({ page }) => {
+    // Export backup is disabled when there is no data — add one transaction first
+    await addTransaction(page, "VOO", "500");
+
     const downloadPromise = page.waitForEvent("download", { timeout: 5000 });
-
-    // Find backup button — may be in settings/menu
-    const backupBtn = page.getByRole("button", { name: /backup|export/i }).first();
-    if (await backupBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await backupBtn.click();
-    } else {
-      // Try mobile nav settings area
-      const settingsBtn = page.getByRole("button", { name: /settings|data/i }).first();
-      await settingsBtn.click();
-      await page.getByRole("button", { name: /backup|export/i }).first().click();
-    }
-
+    await page.getByRole("button", { name: /export backup/i }).first().click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/apex|backup|\.json/i);
   });
 
-  // TODO(e2e): file input is hidden behind a custom restore flow — inspect DOM
-  test.fixme("restore accepts a valid backup file", async ({ page }) => {
-    // Create a minimal valid backup
+  test("restore accepts a valid backup file without crashing", async ({ page }) => {
     const backup = {
-      transactions: [],
-      meta: {},
+      transactions: [
+        {
+          id: "test-1",
+          month: "2026-01",
+          ticker: "VOO",
+          amount: 500,
+          type: "buy",
+          timestamp: new Date().toISOString(),
+        },
+      ],
+      meta: [],
       deletedIds: [],
       exportedAt: new Date().toISOString(),
     };
-    const backupJson = JSON.stringify(backup);
 
-    // Find restore/import button
-    const restoreBtn = page.getByRole("button", { name: /restore|import/i }).first();
-    if (!(await restoreBtn.isVisible({ timeout: 1000 }).catch(() => false))) {
-      const settingsBtn = page.getByRole("button", { name: /settings|data/i }).first();
-      await settingsBtn.click();
-    }
-
-    const fileInput = page.locator('input[type="file"]').first();
-    await fileInput.setInputFiles({
+    const fileChooserPromise = page.waitForEvent("filechooser", { timeout: 5000 });
+    await page.getByRole("button", { name: /import backup/i }).first().click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles({
       name: "apex-backup.json",
       mimeType: "application/json",
-      buffer: Buffer.from(backupJson),
+      buffer: Buffer.from(JSON.stringify(backup)),
     });
 
-    // Should not crash — no error dialog
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(800);
     await expect(page.getByText(/something went wrong/i)).not.toBeVisible();
   });
 });
@@ -204,18 +178,20 @@ test.describe("Backup and restore", () => {
 // ─── edit transaction ──────────────────────────────────────────────────────
 
 test.describe("Edit transaction", () => {
-  test("edit modal opens from transactions view", async ({ page }) => {
+  test("inline edit activates on transactions view", async ({ page }) => {
     await page.goto("/");
     await waitForApp(page);
+
+    // Need at least one transaction to edit
+    await addTransaction(page, "MSFT", "800");
     await navigateTo(page, "transactions");
 
-    // If there are transactions, click the first edit button
     const editBtn = page.getByRole("button", { name: /edit/i }).first();
     if (await editBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       await editBtn.click();
-      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });
+      // Edit is inline — expect a Save button to appear
+      await expect(page.getByRole("button", { name: /save/i }).first()).toBeVisible({ timeout: 3000 });
     } else {
-      // No transactions yet — skip gracefully
       test.skip();
     }
   });
@@ -234,5 +210,19 @@ test.describe("PWA metadata", () => {
     const manifest = await manifestResp.json();
     expect(manifest.name).toBeTruthy();
     expect(manifest.icons?.length).toBeGreaterThan(0);
+  });
+
+  test("PNG icons declared in manifest are reachable", async ({ page }) => {
+    await page.goto("/");
+    const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
+    const manifest = await (await page.request.get(manifestHref!)).json();
+    const pngIcons = (manifest.icons as { src: string; type?: string }[]).filter(
+      (i) => !i.src.endsWith(".svg")
+    );
+    expect(pngIcons.length).toBeGreaterThan(0);
+    for (const icon of pngIcons) {
+      const resp = await page.request.get(icon.src);
+      expect(resp.status()).toBe(200);
+    }
   });
 });
